@@ -1,7 +1,15 @@
-# Class timetable (demo)
+# Class timetable
 
-React + FastAPI + MongoDB, with WhatsApp Cloud API settings you fill in later.
-Runs on your own computer. Nothing is sent anywhere until you add WhatsApp details in **Settings**.
+React + FastAPI + MongoDB timetable application with optional WhatsApp Cloud API notifications.
+
+## Live deployment
+
+- Website: https://timetable-app-ebon.vercel.app
+- Backend API: https://timetable-backend-0v5v.onrender.com
+- Backend health check: https://timetable-backend-0v5v.onrender.com/api/health
+- Source code: https://github.com/barathvasan-dev/Mini_project_timetable
+
+The Render backend uses MongoDB Atlas for persistent storage. The free Render service may sleep after inactivity, so the first request can take up to about 50 seconds.
 
 ## What you need
 - Python 3.10+
@@ -10,7 +18,9 @@ Runs on your own computer. Nothing is sent anywhere until you add WhatsApp detai
   - Docker: `docker run -d --name tt-mongo -p 27017:27017 mongo:7`
   - or install MongoDB Community Server and start the service.
 
-## Start it (two terminals)
+## Local setup
+
+### 1. Start the backend
 
 **1. Backend**
 ```
@@ -20,9 +30,17 @@ python -m venv .venv
 pip install -r requirements.txt
 uvicorn main:app --reload --port 8000
 ```
-No MongoDB handy? For a throw-away try-out only: set `TT_MEMORY=1` before starting
-(data is lost when the server stops).
-Optional settings: `MONGO_URL` (default `mongodb://localhost:27017`), `MONGO_DB` (default `timetable`).
+
+For a throw-away local demo without MongoDB, set `TT_MEMORY=1` before starting. Data is lost when the server stops.
+
+For persistent local storage, configure:
+
+```powershell
+$env:MONGO_URL = "mongodb://localhost:27017"
+$env:MONGO_DB = "timetable"
+```
+
+### 2. Start the frontend
 
 **2. Frontend**
 ```
@@ -31,6 +49,42 @@ npm install
 npm run dev
 ```
 Open http://localhost:5173
+
+The Vite development server proxies `/api` requests to `http://127.0.0.1:8000`.
+
+## Production configuration
+
+### Render backend
+
+The backend is deployed from the `backend` directory on Render.
+
+- Build command: `pip install -r requirements.txt`
+- Start command: `uvicorn main:app --host 0.0.0.0 --port $PORT`
+- `MONGO_URL`: MongoDB Atlas connection string, kept only in Render environment variables
+- `MONGO_DB`: `timetable`
+- `APP_ORIGINS`: `https://timetable-app-ebon.vercel.app`
+
+Never commit `MONGO_URL` or any database password to the repository.
+
+### Vercel frontend
+
+The frontend is deployed from the `frontend` directory on Vercel.
+
+- Build command: `npm run build`
+- Output directory: `dist`
+- `VITE_API_URL`: `https://timetable-backend-0v5v.onrender.com`
+
+### MongoDB Atlas
+
+The production database is:
+
+- Cluster: `TimetableApp`
+- Database: `timetable`
+- Collections: `config` and `log`
+
+The `config` collection stores the current timetable, settings, admin account hash, and token secret. The `log` collection stores recent timetable change entries. Do not expose the `admin` or `secret` documents.
+
+Configure Atlas Network Access for the Render service. Render uses changing IP addresses, so the free deployment commonly requires the `0.0.0.0/0` CIDR entry. Use a strong database password and rotate it immediately if it is exposed.
 
 ## Using it
 - First screen is the **sign in** page. Default login: **admin / admin**.
@@ -58,7 +112,10 @@ Open http://localhost:5173
 ```
 cd backend  && python tests/test_backend.py        # API logic, no packages needed
 cd frontend && npm test                            # change summary and message wording
+cd frontend && npm run build                       # production frontend build
 ```
+
+Current verification: 29 backend tests pass, 7 frontend tests pass, and the production health endpoint returns `{"ok":true}`.
 
 ## Folder map
 ```
